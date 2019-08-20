@@ -2,12 +2,14 @@ package com.gpmall.cashier.bootstrap.controller;/**
  * Created by mic on 2019/8/1.
  */
 
+import com.alibaba.fastjson.JSON;
 import com.gupaoedu.pay.PayCoreService;
 import com.gupaoedu.pay.dto.PaymentNotifyRequest;
 import com.gupaoedu.pay.dto.PaymentNotifyResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.Reference;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
@@ -22,31 +24,58 @@ import java.util.Map;
 @Slf4j
 @RestController
 public class PayNotifyController {
-   @Reference(timeout=3000)
-   private PayCoreService payCoreService;
 
-	@PostMapping("/pay/aliPayNotifty")
+	@Reference(timeout = 30000,retries = 3)
+	private PayCoreService payCoreService;
+
+	/**
+	 * 支付宝支付结果异步通知
+	 *
+	 * @param httpServletRequest
+	 * @return
+	 */
+	@PostMapping("/pay/alipayNotify")
 	public String doAliPay(HttpServletRequest httpServletRequest) {
-		Map<String, String[]> map=httpServletRequest.getParameterMap();
-		PaymentNotifyRequest paymentNotifyRequest=new PaymentNotifyRequest();
-		paymentNotifyRequest.setPayChannel("ali_pay");
-		//paymentNotifyRequest.setResultMap(map);
-		PaymentNotifyResponse paymentNotifyResponse=payCoreService.paymentResultNotify(paymentNotifyRequest);
+		return commonDo("ali_pay", httpServletRequest);
+	}
+
+	/**
+	 * 微信支付异步返回通知
+	 *
+	 * @return
+	 */
+	@RequestMapping("/pay/wechatPayNotify")
+	public String doWeChantPay(HttpServletRequest httpServletRequest) {
+		return commonDo("wechat_pay", httpServletRequest);
+	}
+
+	/**
+	 * 支付宝退款异步返回
+	 *
+	 * @return
+	 */
+	@PostMapping("/refund/aliRefundNotify")
+	public String doAliRefund(HttpServletRequest httpServletRequest) {
+		return commonDo("ali_refund", httpServletRequest);
+	}
+
+	/**
+	 * 微信退款异步返回
+	 *
+	 * @return
+	 */
+	@PostMapping("/refund/wechatRefundNotify")
+	public String doWechatRefund(HttpServletRequest httpServletRequest) {
+		return commonDo("wechat_refund", httpServletRequest);
+	}
+
+	private String commonDo(String channel, HttpServletRequest httpServletRequest) {
+		log.info("{}异步通知回调:{}", channel, JSON.toJSON(httpServletRequest.getParameterMap()));
+		Map<String, String[]> map = httpServletRequest.getParameterMap();
+		PaymentNotifyRequest paymentNotifyRequest = new PaymentNotifyRequest();
+		paymentNotifyRequest.setPayChannel(channel);
+		paymentNotifyRequest.setResultMap(map);
+		PaymentNotifyResponse paymentNotifyResponse = payCoreService.paymentResultNotify(paymentNotifyRequest);
 		return paymentNotifyResponse.getResult();
-	}
-
-	@PostMapping("/pay/wechantPayNotifty")
-	public String doWechantPay() {
-		return null;
-	}
-
-	@PostMapping("/refund/aliRefundNotifty")
-	public String doAliRefund() {
-		return null;
-	}
-
-	@PostMapping("/refund/wechatRefundNotifty")
-	public String doWechatRefund() {
-		return null;
 	}
 }
